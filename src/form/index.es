@@ -4,6 +4,7 @@ import omit from 'lodash/omit';
 import clsx from 'clsx';
 import { bindTo, invoke, has } from '../utils';
 import { Provider } from './context';
+import Button from './button';
 
 
 class Form extends PureComponent {
@@ -23,7 +24,7 @@ class Form extends PureComponent {
 
     // Fixes weird iteration over object bugs
     this.inputs = [];
-    this.state = this.getDefaultState();
+    this.state = this.getDefaultState(props);
     this.staticContext = this.getDefaultContext();
   }
 
@@ -32,8 +33,11 @@ class Form extends PureComponent {
     return { addInput, removeInput, updateValidity };
   }
 
-  getDefaultState() {
-    return { isValid: true };
+  getDefaultState(props) {
+    return {
+      isValid: true,
+      isLocked: Boolean(props.defaultLocked),
+    };
   }
 
   getModel() {
@@ -68,10 +72,12 @@ class Form extends PureComponent {
   setPristine(done) {
     this.inputs.forEach((Component) => Component.setPristine());
 
+    const updater = (state, props) => this.getDefaultState(props);
+
     let complete;
     if (done) complete = () => process.nextTick(done);
 
-    this.setState(this.getDefaultState(), complete);
+    this.setState(updater, complete);
   }
 
   setValid(isValid, done) {
@@ -80,6 +86,10 @@ class Form extends PureComponent {
       invoke(done);
     };
     this.setState({ isValid }, complete);
+  }
+
+  setLocked(isLocked, done) {
+    this.setState({ isLocked }, done);
   }
 
   addInput(Component) {
@@ -91,11 +101,17 @@ class Form extends PureComponent {
   }
 
   isDisabled() {
-    return !this.state.isValid || this.props.locked;
+    return !this.state.isValid || this.props.locked || this.state.isLocked;
   }
 
   isValid() {
     return this.inputs.every((Component) => Component.isValid());
+  }
+
+  isValidatedAndValidAsync() {
+    return Promise.all(this.inputs.map((Component) => (
+      Component.getValidation(Component.getValue())
+    )));
   }
 
   isPristine() {
@@ -104,6 +120,11 @@ class Form extends PureComponent {
 
   updateValidity(done) {
     this.setValid(this.isValid(), done);
+    if (!this.props.defaultLocked) return;
+
+    this.isValidatedAndValidAsync()
+      .then(() => this.setLocked(false))
+      .catch(() => this.setLocked(true));
   }
 
   reset(done) {
@@ -111,10 +132,12 @@ class Form extends PureComponent {
     // and then checking when each was called
     this.inputs.forEach((Component) => Component.reset());
 
+    const updater = (state, props) => this.getDefaultState(props);
+
     let complete;
     if (done) complete = () => process.nextTick(done);
 
-    this.setState(this.getDefaultState(), complete);
+    this.setState(updater, complete);
   }
 
   validate(done) {
@@ -136,7 +159,11 @@ class Form extends PureComponent {
     const args = [this.getModel(), this.setErrors, this.setValues];
 
     const success = () => {
-      const complete = () => invoke(onValidSubmit, ...args);
+      const complete = () => {
+        invoke(onValidSubmit, ...args);
+        this.setLocked(false);
+      };
+
       this.setPristine(complete);
     };
     const fail = () => invoke(onInvalidSubmit, ...args);
@@ -148,6 +175,7 @@ class Form extends PureComponent {
 
   render() {
     const {
+      as: Component,
       formError,
       buttonClass,
       buttonText,
@@ -155,8 +183,11 @@ class Form extends PureComponent {
       children,
     } = this.props;
 
+    const isDisabled = this.isDisabled();
+
     const className = clsx('c-form', this.props.className);
     const cleanProps = omit(this.props,
+      'as',
       'children',
       'onValidityChange',
       'onValidSubmit',
@@ -166,7 +197,17 @@ class Form extends PureComponent {
       'buttonClass',
       'alternativeAction',
       'locked',
+      'defaultLocked',
     );
+
+    const isNative = Component === 'form';
+
+    const formProps = { className };
+    if (isNative) {
+      formProps.method = 'post';
+      formProps.onSubmit = this.submit;
+      formProps.noValidate = true;
+    }
 
     let error;
     if (formError) {
@@ -175,11 +216,12 @@ class Form extends PureComponent {
 
     let button;
     if (buttonText) {
-      const buttonClassName = buttonClass || 'ui-button ui-button-primary';
       button = (
-        <button className={buttonClassName} type="submit" disabled={this.isDisabled()}>
-          {buttonText}
-        </button>
+        <Button
+          className={buttonClass} text={buttonText}
+          as={isNative ? 'button' : 'span'} disabled={isDisabled}
+          onSubmit={this.submit}
+        />
       );
     }
 
@@ -195,21 +237,27 @@ class Form extends PureComponent {
 
     return (
       <Provider value={this.staticContext}>
-        <form
-          {...cleanProps} className={className}
-          method="post" onSubmit={this.submit} noValidate
-        >
+        <Component {...cleanProps} {...formProps}>
           {children}
           {error}
           {footer}
-        </form>
+        </Component>
       </Provider>
     );
   }
 }
 
+Form.defaultProps = {
+  as: 'form',
+  locked: false,
+  defaultLocked: false,
+};
+
 Form.propTypes = {
   className: PropTypes.string,
+
+  as: PropTypes.elementType,
+
   formError: PropTypes.node,
   buttonClass: PropTypes.string,
   buttonText: PropTypes.node,
@@ -220,7 +268,8 @@ Form.propTypes = {
   onInvalidSubmit: PropTypes.func,
   onSubmit: PropTypes.func,
 
-  locked: PropTypes.bool,
+  locked: PropTypes.bool.isRequired,
+  defaultLocked: PropTypes.bool.isRequired,
 
   children: PropTypes.node,
 };

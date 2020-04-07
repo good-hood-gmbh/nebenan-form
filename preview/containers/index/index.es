@@ -9,6 +9,8 @@ export default () => (
       <ul className="ui-options">
         <li><Link to="/form">Form</Link></li>
         <li><Link to="/inputs">Inputs</Link></li>
+        <li><Link to="/locked">Default Locked</Link></li>
+        <li><Link to="/nested">Nested</Link></li>
       </ul>
     </div>
   </article>

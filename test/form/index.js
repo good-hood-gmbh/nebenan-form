@@ -25,7 +25,6 @@ describe('<Form />', () => {
     assert.equal(error.text(), 'Error', 'formError text was rendered correct');
 
     assert.lengthOf(button, 1, 'button was rendered');
-    assert.equal(button.text(), 'button', 'button text  was rendered correct');
   });
 
   it('setErrors', () => {
@@ -62,7 +61,7 @@ describe('<Form />', () => {
     instance.addInput({ setPristine });
     instance.setPristine(callback);
 
-    assert.deepEqual(instance.state, instance.getDefaultState(), 'state is back to default');
+    assert.deepEqual(instance.state, instance.getDefaultState({}), 'state is back to default');
     assert.isTrue(setPristine.calledOnce, 'setPristine on component was called');
 
     process.nextTick(() => {
@@ -121,7 +120,7 @@ describe('<Form />', () => {
     assert.isFalse(instance.state.isValid, 'state was changed');
 
     instance.reset();
-    assert.deepEqual(instance.state, instance.getDefaultState(), 'state is back to default');
+    assert.deepEqual(instance.state, instance.getDefaultState({}), 'state is back to default');
     assert.isTrue(reset.calledOnce, 'reset on component was called');
   });
 
