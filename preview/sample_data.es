@@ -33,24 +33,4 @@ export default {
     { key: 'Fünf', value: false, children: 'I is a random content moist' },
     { key: 'Sechs', value: 6, children: 'I is a random content 17/2' },
   ],
-
-  datepickerLocale: {
-    firstDay: 1,
-    weekdayShortLabels: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
-    monthLabels: [
-      'Januar',
-      'Februar',
-      'März',
-      'April',
-      'Mai',
-      'Juni',
-      'Juli',
-      'August',
-      'September',
-      'Oktober',
-      'November',
-      'Dezember',
-    ],
-    dateFormat: 'dd.MM.yyyy',
-  },
 };
